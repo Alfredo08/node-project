@@ -93,9 +93,25 @@ app.get( '/api/getByName/:name', ( req, res ) => {
 });
 
 app.post( '/api/newStudent', jsonParser, ( req, res ) =>{
-    console.log( req.body );
+    
+    let nombre = req.body.nombre;
+	let apellido = req.body.apellido;
+	let matricula = req.body.matricula;
 
-    return res.status( 200 ).json({});
+	let newStudent = {
+		nombre,
+		apellido,
+		matricula
+	};
+
+	StudentList.create( newStudent )
+		.then( student => {
+			return res.status( 201 ).json( student );
+		})
+		.catch( error => {
+			res.statusMessage = "Error en conexión con la base de datos";
+			return res.status( 500 ).json( error );
+		});
 });
 
 let server;
@@ -136,6 +152,6 @@ function closeServer(){
 			});
 		});
 }
-runServer( PORT, DATABASE_URL);
+runServer( PORT, DATABASE_URL );
 
 module.exports = { app, runServer, closeServer }

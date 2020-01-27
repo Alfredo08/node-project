@@ -23,7 +23,16 @@ let StudentList = {
             .catch( error => {
                 throw Error( error );
             });
-    }
+    },
+    create : function( newStudent ){
+		return Student.create( newStudent )
+				.then( student => {
+					return student;
+				})
+				.catch( error => {
+					throw Error(error);
+				});
+	},
 };
 
 module.exports = {
