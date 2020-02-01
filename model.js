@@ -46,6 +46,7 @@ let StudentList = {
     },
     getByCareer : function( careerID ){
         return Student.find( { carrera : careerID })
+            .populate('carrera')
             .then( students => {
                 return students;
             })
