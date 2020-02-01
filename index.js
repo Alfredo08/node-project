@@ -3,7 +3,8 @@ let morgan = require( 'morgan' );
 let bodyParser = require( 'body-parser' );
 let mongoose = require( 'mongoose' );
 let jsonParser = bodyParser.json();
-let { StudentList } = require( './model' );
+let { StudentList, CareerList } = require( './model' );
+let jwt = require( 'jsonwebtoken' );
 let {DATABASE_URL, PORT} = require( './config' );
 
 let app = express();
@@ -42,8 +43,8 @@ let estudiantes = [{
    matricula : 816350 
 }];
 
-app.get( '/api/students', ( req, res ) => {
-    
+app.get( '/api/students', jsonParser, ( req, res ) => {
+    console.log( req.body);
     StudentList.getAll()
         .then( studentList => {
             return res.status( 200 ).json( studentList );
@@ -96,7 +97,8 @@ app.post( '/api/newStudent', jsonParser, ( req, res ) =>{
     
     let nombre = req.body.nombre;
 	let apellido = req.body.apellido;
-	let matricula = req.body.matricula;
+    let matricula = req.body.matricula;
+    let clave = req.body.clave;
 
 	let newStudent = {
 		nombre,
@@ -104,14 +106,112 @@ app.post( '/api/newStudent', jsonParser, ( req, res ) =>{
 		matricula
 	};
 
-	StudentList.create( newStudent )
-		.then( student => {
-			return res.status( 201 ).json( student );
+    CareerList.getIdByKey( clave )
+        .then( carrera => {
+
+            newStudent.carrera = carrera._id;
+            StudentList.create( newStudent, )
+                .then( student => {
+                    return res.status( 201 ).json( student );
+                })
+                .catch( error => {
+                    res.statusMessage = "Error en conexión con la base de datos";
+                    return res.status( 500 ).json( error );
+                });
+        })
+        .catch( error => {
+            console.log(error);
+            res.statusMessage = "Hubo un error de conexion con la BD. " + error;
+            return res.status( 500 ).send();
+        });
+
+	
+});
+
+app.post( '/api/login', jsonParser, ( req, res ) => {
+
+    let user = req.body.user;
+    let password = req.body.password;
+    //Validar el usuario en la BD antes de generar el token
+    let data = {
+        user
+    };
+
+    let token = jwt.sign( data, ' ', {
+        expiresIn : 60 * 5
+    });
+
+    return res.status( 200 ).json( {token} );
+
+});
+
+app.get( '/api/validate', ( req, res ) => {
+    let token = req.headers.authorization;
+    token = token.replace('Bearer ', '');
+
+    jwt.verify( token, 'secret', ( err, user ) => {
+        if ( err ){
+            res.statusMessage = "Token no valido";
+            return res.status (400 ).send();
+        }
+
+        console.log( user );
+        return res.status( 200 ).json( { message : "Exito" } );
+    });
+});
+
+app.get( '/api/careers', ( req, res ) => {
+    CareerList.getAll()
+        .then( careerList => {
+            return res.status( 200 ).json( careerList );
+        })
+        .catch( error => {
+            console.log(error);
+            res.statusMessage = "Hubo un error de conexion con la BD."
+            return res.status( 500 ).send();
+        });
+});
+
+app.post( '/api/newCareer', jsonParser, ( req, res ) =>{
+    
+    let nombre = req.body.nombre;
+	let clave = req.body.clave;
+
+	let newCareer = {
+		nombre,
+		clave
+	};
+
+	CareerList.create( newCareer )
+		.then( career => {
+			return res.status( 201 ).json( career );
 		})
 		.catch( error => {
 			res.statusMessage = "Error en conexión con la base de datos";
 			return res.status( 500 ).json( error );
 		});
+});
+
+app.get( '/api/getStudentsByCareer/:key', ( req, res ) => {
+    let clave = req.params.key;
+
+    CareerList.getIdByKey( clave )
+        .then( carrera => {
+;
+            StudentList.getByCareer( carrera._id )
+                .then( students => {
+                    return res.status( 200 ).json( students );
+                })
+                .catch( error => {
+                    res.statusMessage = "Error en conexión con la base de datos";
+                    return res.status( 500 ).json( error );
+                });
+        })
+        .catch( error => {
+            console.log(error);
+            res.statusMessage = "Hubo un error de conexion con la BD. " + error;
+            return res.status( 500 ).send();
+        });
 });
 
 let server;
